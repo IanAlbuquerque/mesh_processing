@@ -1,10 +1,10 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2018-02-18T22:04:14
+# Project created by QtCreator 2017-10-03T14:23:35
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT       += core gui opengl
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -22,13 +22,26 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
+FORMS += \
+    mainwindow.ui
 
-SOURCES += \
-        main.cpp \
-        mainwindow.cpp
+DISTFILES +=
 
 HEADERS += \
-        mainwindow.h
+    renderwidget.h \
+    mainwindow.h \
+    camera.h
 
-FORMS += \
-        mainwindow.ui
+SOURCES += \
+    renderwidget.cpp \
+    mainwindow.cpp \
+    main.cpp \
+    camera.cpp
+
+RESOURCES += \
+    data.qrc
+
+
+
+
+
