@@ -107,6 +107,7 @@ compiler_rcc_clean:
 	-$(DEL_FILE) release\qrc_data.cpp
 release/qrc_data.cpp: ../3drenderer/data.qrc \
 		F:/Qt/5.9.1/mingw53_32/bin/rcc.exe \
+		../3drenderer/geometryshader.glsl \
 		../3drenderer/fragmentshader.glsl \
 		../3drenderer/vertexshader.glsl
 	F:\Qt\5.9.1\mingw53_32\bin\rcc.exe -name data ..\3drenderer\data.qrc -o release\qrc_data.cpp

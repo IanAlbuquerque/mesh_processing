@@ -78,7 +78,7 @@ public:
 
     void retranslateUi(QMainWindow *MainWindow)
     {
-        MainWindow->setWindowTitle(QApplication::translate("MainWindow", "CG - T3 - Arcball", Q_NULLPTR));
+        MainWindow->setWindowTitle(QApplication::translate("MainWindow", "3D Renderer", Q_NULLPTR));
     } // retranslateUi
 
 };

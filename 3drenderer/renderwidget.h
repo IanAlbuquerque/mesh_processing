@@ -29,11 +29,11 @@ private:
     virtual void mouseReleaseEvent(QMouseEvent *event);
     virtual void mouseMoveEvent(QMouseEvent *event);
     virtual void wheelEvent(QWheelEvent *event);
+    virtual void keyPressEvent(QKeyEvent *event);
+    virtual void keyReleaseEvent(QKeyEvent *event);
 
     void createCube();
-    void createSphere();
     void createVBO();
-    void createTexture(const std::string& imagePath);
 
     QOpenGLShaderProgram* program;
 
@@ -42,7 +42,6 @@ private:
     unsigned int EBO;
     std::vector< glm::vec3 > vertices;
     std::vector< glm::vec3 > normals;
-    std::vector< glm::vec2 > texCoords;
     std::vector< unsigned int > indices;
 
     Camera* camera;
@@ -50,7 +49,11 @@ private:
     glm::mat4x4 view;
     glm::mat4x4 proj;
 
-    unsigned int textureID;
+    glm::vec2 screenCoordinatesOnMouseDown;
+    bool isMovingCamera;
+
+    bool hasWireframe;
+    bool hasOcclusion;
 };
 
 #endif // RENDERWIDGET_H
