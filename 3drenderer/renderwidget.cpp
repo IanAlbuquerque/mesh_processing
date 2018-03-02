@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "camera.h"
+#include "mesh.h"
 
 #include <cmath>
 #ifndef M_PI
@@ -83,8 +84,6 @@ void RenderWidget::paintGL()
   QMatrix4x4 v(glm::value_ptr(glm::transpose(this->view)));
   QMatrix4x4 p(glm::value_ptr(glm::transpose(this->proj)));
 
-  program->setUniformValue("light.position", QVector3D(0.0f, 0.0f, 0.0f) );
-
   QMatrix4x4 mv = v * m;
   QMatrix4x4 mvp = p * mv;
   this->program->setUniformValue("mv", mv);
@@ -115,11 +114,11 @@ void RenderWidget::keyPressEvent(QKeyEvent *event)
   {
     case Qt::Key_W:
     case Qt::Key_Up:
-      movementUnitDirection = this->camera->getFrontUnitVector();
+      movementUnitDirection = this->camera->getForwardUnitVector();
       break;
     case Qt::Key_S:
     case Qt::Key_Down:
-      movementUnitDirection = this->camera->getBackUnitVector();
+      movementUnitDirection = this->camera->getBackwardUnitVector();
       break;
     case Qt::Key_A:
     case Qt::Key_Left:
@@ -213,42 +212,47 @@ void RenderWidget::wheelEvent(QWheelEvent *event)
 
 void RenderWidget::createCube()
 {
-  vertices = {
-      { -1, -1, -1 }, { -1, -1, -1 }, { -1, -1, -1 },
-      { +1, -1, -1 }, { +1, -1, -1 }, { +1, -1, -1 },
-      { +1, -1, +1 }, { +1, -1, +1 }, { +1, -1, +1 },
-      { -1, -1, +1 }, { -1, -1, +1 }, { -1, -1, +1 },
-      { -1, +1, -1 }, { -1, +1, -1 }, { -1, +1, -1 },
-      { +1, +1, -1 }, { +1, +1, -1 }, { +1, +1, -1 },
-      { +1, +1, +1 }, { +1, +1, +1 }, { +1, +1, +1 },
-      { -1, +1, +1 }, { -1, +1, +1 }, { -1, +1, +1 }
-  };
+//  vertices = {
+//      { -1, -1, -1 }, { -1, -1, -1 }, { -1, -1, -1 },
+//      { +1, -1, -1 }, { +1, -1, -1 }, { +1, -1, -1 },
+//      { +1, -1, +1 }, { +1, -1, +1 }, { +1, -1, +1 },
+//      { -1, -1, +1 }, { -1, -1, +1 }, { -1, -1, +1 },
+//      { -1, +1, -1 }, { -1, +1, -1 }, { -1, +1, -1 },
+//      { +1, +1, -1 }, { +1, +1, -1 }, { +1, +1, -1 },
+//      { +1, +1, +1 }, { +1, +1, +1 }, { +1, +1, +1 },
+//      { -1, +1, +1 }, { -1, +1, +1 }, { -1, +1, +1 }
+//  };
 
-  normals = {
-      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, -1 },
-      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, -1 },
-      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, +1 },
-      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, +1 },
-      { -1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
-      { +1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
-      { +1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 },
-      { -1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 }
-  };
+//  normals = {
+//      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, -1 },
+//      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, -1 },
+//      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, +1 },
+//      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, +1 },
+//      { -1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
+//      { +1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
+//      { +1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 },
+//      { -1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 }
+//  };
 
-  indices = {
-      0,   3,  6, //normal: (  0, -1,  0 )
-      0,   6,  9, //normal: (  0, -1,  0 )
-      12,  1, 10, //normal: ( -1,  0,  0 )
-      12, 10, 21, //normal: ( -1,  0,  0 )
-      18,  7,  4, //normal: ( +1,  0,  0 )
-      18,  4, 15, //normal: ( +1,  0,  0 )
-      22, 11,  8, //normal: (  0,  0, +1 )
-      22,  8, 19, //normal: (  0,  0, +1 )
-      16,  5,  2, //normal: (  0,  0, -1 )
-      16,  2, 13, //normal: (  0,  0, -1 )
-      23, 20, 17, //normal: (  0, +1,  0 )
-      23, 17, 14  //normal: (  0, +1,  0 )
-  };
+//  indices = {
+//      0,   3,  6, //normal: (  0, -1,  0 )
+//      0,   6,  9, //normal: (  0, -1,  0 )
+//      12,  1, 10, //normal: ( -1,  0,  0 )
+//      12, 10, 21, //normal: ( -1,  0,  0 )
+//      18,  7,  4, //normal: ( +1,  0,  0 )
+//      18,  4, 15, //normal: ( +1,  0,  0 )
+//      22, 11,  8, //normal: (  0,  0, +1 )
+//      22,  8, 19, //normal: (  0,  0, +1 )
+//      16,  5,  2, //normal: (  0,  0, -1 )
+//      16,  2, 13, //normal: (  0,  0, -1 )
+//      23, 20, 17, //normal: (  0, +1,  0 )
+//      23, 17, 14  //normal: (  0, +1,  0 )
+//  };
+
+  Mesh mesh;
+  mesh.loadPyramid();
+  mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
+
 //  vertices = {
 //    {0, 0, 0}, {1, 0, 0}, {0, 1, 0},
 //    {0, 0, 1}, {1, 0, 1}, {0, 1, 1}
@@ -266,14 +270,13 @@ void RenderWidget::createVBO()
   {
       glm::vec3 pos;
       glm::vec3 normal;
-      int idx;
   };
 
   std::vector<vertex> vbo;
   vbo.reserve(this->vertices.size());
   for (unsigned int i = 0; i < vertices.size(); i++)
   {
-    vbo.push_back({vertices[i], normals[i], i % 3});
+    vbo.push_back({vertices[i], normals[i]});
   }
 
   glGenVertexArrays(1, &VAO);
@@ -296,10 +299,6 @@ void RenderWidget::createVBO()
   // vertexNormal
   glEnableVertexAttribArray( 1 );
   glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)sizeof(glm::vec3) );
-
-  // vertexIdx
-  glEnableVertexAttribArray( 2 );
-  glVertexAttribPointer( 2, 1, GL_INT, GL_FALSE, sizeof(int), (void*)(2 * sizeof(glm::vec3)) );
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 }

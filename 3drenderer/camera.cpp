@@ -68,6 +68,16 @@ glm::vec3 Camera::getBackUnitVector()
   return -1.0f * this->getFrontUnitVector();
 }
 
+glm::vec3 Camera::getForwardUnitVector()
+{
+  return glm::cross(glm::normalize(this->up), this->getRightUnitVector());
+}
+
+glm::vec3 Camera::getBackwardUnitVector()
+{
+  return -1.0f * this->getForwardUnitVector();
+}
+
 glm::vec3 Camera::getRightUnitVector()
 {
   return glm::cross(this->getFrontUnitVector(), glm::normalize(this->up));

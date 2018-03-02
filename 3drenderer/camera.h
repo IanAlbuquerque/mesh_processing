@@ -46,6 +46,8 @@ public:
   glm::vec3 getPosition();
   glm::vec3 getFrontUnitVector();
   glm::vec3 getBackUnitVector();
+  glm::vec3 getForwardUnitVector();
+  glm::vec3 getBackwardUnitVector();
   glm::vec3 getRightUnitVector();
   glm::vec3 getLeftUnitVector();
   glm::vec3 getUpUnitVector();

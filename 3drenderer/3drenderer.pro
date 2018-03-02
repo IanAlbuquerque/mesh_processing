@@ -30,13 +30,15 @@ DISTFILES +=
 HEADERS += \
     renderwidget.h \
     mainwindow.h \
-    camera.h
+    camera.h \
+    mesh.h
 
 SOURCES += \
     renderwidget.cpp \
     mainwindow.cpp \
     main.cpp \
-    camera.cpp
+    camera.cpp \
+    mesh.cpp
 
 RESOURCES += \
     data.qrc

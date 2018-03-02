@@ -1,25 +1,17 @@
 #version 460 core
 
-struct Light
-{
-    vec3 position; //No espaço da câmera
-};
-
-uniform Light light;
 uniform bool hasWireframe;
 uniform bool hasOcclusion;
 
-in vec3 vColor;
-
-in vec3 fragPos;
-in vec3 fragNormal;
-in vec3 fragCoords;
+in vec3 fragmentPositionVSpace;
+in vec3 fragmentNormalVSpace;
+in vec3 fragmentTriangleCoordinate;
 
 out vec3 finalColor;
 
 void main()
 {
-    if(hasWireframe && (vColor.x < 0.01 || vColor.y < 0.01 || vColor.z < 0.01))
+    if(hasWireframe && (fragmentTriangleCoordinate.x < 0.01 || fragmentTriangleCoordinate.y < 0.01 || fragmentTriangleCoordinate.z < 0.01))
     {
         finalColor = vec3(1, 1, 1);
         return;
@@ -30,6 +22,7 @@ void main()
         return;
     }
 
+    vec3 lightPositionVSpace = vec3(0.0, 0.0, 0.0);
     vec3 materialDiffuse = vec3(1.0, 0.0, 0.0);
     vec3 materialSpecular = vec3(1.0, 1.0, 1.0);
 
@@ -39,8 +32,8 @@ void main()
     vec3 diffuse = vec3(0.0, 0.0, 0.0);
     vec3 specular = vec3(0.0, 0.0, 0.0);
 
-    vec3 N = normalize(fragNormal);
-    vec3 L = normalize(light.position - fragPos);
+    vec3 N = normalize(fragmentNormalVSpace);
+    vec3 L = normalize(lightPositionVSpace - fragmentPositionVSpace);
 
     float iDif = dot(L,N);
 
@@ -48,11 +41,16 @@ void main()
     {
         diffuse = iDif * materialDiffuse;
 
-        vec3 V = normalize(-fragPos);
+        vec3 V = normalize(-fragmentPositionVSpace);
         vec3 H = normalize(L + V);
 
         float iSpec = pow(max(dot(N,H),0.0), materialShininess);
         specular = iSpec * materialSpecular;
+    }
+    else
+    {
+        discard;
+        return;
     }
 
     finalColor = ambient + diffuse + specular;
