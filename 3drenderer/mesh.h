@@ -3,6 +3,7 @@
 
 #include "glm/glm.hpp"
 #include <vector>
+#include <string>
 
 class Vertex;
 class Face;
@@ -51,6 +52,7 @@ public:
   Mesh();
   void loadPyramid();
   void getTriangles(std::vector<glm::vec3>* vertices, std::vector<glm::vec3>* normals, std::vector<unsigned int>* indices);
+  void loadObj(std::string inputFilePath);
 };
 
 #endif // TRIANGLEMESH_H

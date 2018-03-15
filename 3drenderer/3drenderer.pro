@@ -31,7 +31,8 @@ HEADERS += \
     renderwidget.h \
     mainwindow.h \
     camera.h \
-    mesh.h
+    mesh.h \
+    tiny_obj_loader.h
 
 SOURCES += \
     renderwidget.cpp \

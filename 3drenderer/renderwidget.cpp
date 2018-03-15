@@ -14,7 +14,6 @@
     #define M_PI 3.14159265358979323846
 #endif
 
-
 RenderWidget::RenderWidget(QWidget *parent)
     : QOpenGLWidget(parent)
     , program(nullptr)
@@ -79,6 +78,8 @@ void RenderWidget::paintGL()
 
   this->view = this->camera->getViewMatrix();
   this->proj = this->camera->getProjectionMatrix();
+  this->model = glm::mat4();
+  this->model = glm::scale(this->model, glm::vec3(1.0f, 1.0f, 1.0f));
 
   QMatrix4x4 m(glm::value_ptr(glm::transpose(this->model)));
   QMatrix4x4 v(glm::value_ptr(glm::transpose(this->view)));
@@ -250,7 +251,14 @@ void RenderWidget::createCube()
 //  };
 
   Mesh mesh;
-  mesh.loadPyramid();
+  mesh.loadObj("C:\\Users\\Ian Albuquerque\\Desktop\\mesh_processing\\3drenderer\\models\\venus_100759.obj");
+//  mesh.loadPyramid();
+//  mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
+//  for(int i=0; i<this->vertices.size(); i++)
+//  {
+//    this->vertices[i] *= -2.0f;
+//    this->normals[i] *= -2.0f;
+//  }
   mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
 
 //  vertices = {

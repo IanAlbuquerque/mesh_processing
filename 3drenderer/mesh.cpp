@@ -1,6 +1,10 @@
 #include "mesh.h"
 
 #include "glm/glm.hpp"
+#include <QDebug>
+
+#define TINYOBJLOADER_IMPLEMENTATION // define this in only *one* .cc
+#include "tiny_obj_loader.h"
 
 Vertex::Vertex(float x, float y, float z)
 {
@@ -22,6 +26,71 @@ Mesh::Mesh()
 
 }
 
+
+void Mesh::loadObj(std::string inputFilePath)
+{
+  tinyobj::attrib_t attrib;
+  std::vector<tinyobj::shape_t> shapes;
+  std::vector<tinyobj::material_t> materials;
+
+  std::string err;
+  bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, inputFilePath.c_str());
+
+  if (!err.empty())
+  {
+    // `err` may contain warning message.
+     qDebug() << err.c_str();
+  }
+
+  if (!ret)
+   {
+    exit(1);
+  }
+
+  for(size_t v=0; v < attrib.vertices.size()/3; v++)
+  {
+//    qDebug() << v << attrib.vertices.size();
+    float vx = attrib.vertices[3*v+0];
+    float vy = attrib.vertices[3*v+1];
+    float vz = attrib.vertices[3*v+2];
+    this->vertices.push_back(new Vertex(vx, vy, vz));
+  }
+
+  for (size_t s = 0; s < shapes.size(); s++) {
+    // Loop over faces(polygon)
+    size_t index_offset = 0;
+    for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+      this->faces.push_back(new Face());
+      int fv = shapes[s].mesh.num_face_vertices[f];
+      int halfEdgeIndex = this->halfedges.size();
+      for (size_t v = 0; v < fv; v++) {
+        Halfedge* newHalfEdge = new Halfedge();
+        this->halfedges.push_back(newHalfEdge);
+        int vertex_idx = shapes[s].mesh.indices[index_offset + v].vertex_index;
+        this->vertices[vertex_idx]->halfedge = newHalfEdge;
+        newHalfEdge->face = this->faces[this->faces.size() - 1];
+      }
+      for (size_t v = 1; v < fv; v++) {
+        int vertex_idx = shapes[s].mesh.indices[index_offset + v].vertex_index;
+        this->halfedges[halfEdgeIndex + v - 1]->vertex = this->vertices[vertex_idx];
+      }
+      int vertex_idx = shapes[s].mesh.indices[index_offset + 0].vertex_index;
+      this->halfedges[halfEdgeIndex + fv - 1]->vertex = this->vertices[vertex_idx];
+
+      for (size_t v = 1; v < fv - 1; v++) {
+        this->halfedges[halfEdgeIndex + v]->prev = this->halfedges[halfEdgeIndex + v - 1];
+        this->halfedges[halfEdgeIndex + v]->next = this->halfedges[halfEdgeIndex + v + 1];
+      }
+      this->halfedges[halfEdgeIndex]->prev = this->halfedges[halfEdgeIndex + fv - 1];
+      this->halfedges[halfEdgeIndex]->next = this->halfedges[halfEdgeIndex + 1];
+      this->halfedges[halfEdgeIndex + fv - 1]->prev = this->halfedges[halfEdgeIndex + fv - 2];
+      this->halfedges[halfEdgeIndex + fv - 1]->next = this->halfedges[halfEdgeIndex];
+
+      this->faces[this->faces.size() - 1]->halfedge = this->halfedges[halfEdgeIndex];
+      index_offset += fv;
+    }
+  }
+}
 
 void Mesh::loadPyramid()
 {
