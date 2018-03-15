@@ -22,7 +22,7 @@ RenderWidget::RenderWidget(QWidget *parent)
   this->isMovingCamera = false;
 
   this->camera = new Camera(
-    glm::vec3(5.0f, 5.0f, -10.0f),
+    glm::vec3(10.0f, 0.0f, 10.0f),
     glm::vec3(0.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f),
     60.0f,
@@ -41,6 +41,7 @@ RenderWidget::~RenderWidget()
 {
   delete this->program;
   delete this->camera;
+  delete this->mesh;
 
   this->glDeleteVertexArrays(1, &VAO);
   this->glDeleteBuffers(1, &VBO);
@@ -79,7 +80,7 @@ void RenderWidget::paintGL()
   this->view = this->camera->getViewMatrix();
   this->proj = this->camera->getProjectionMatrix();
   this->model = glm::mat4();
-  this->model = glm::scale(this->model, glm::vec3(1.0f, 1.0f, 1.0f));
+  this->model = glm::scale(this->model, glm::vec3(5.0f, 5.0f, 5.0f));
 
   QMatrix4x4 m(glm::value_ptr(glm::transpose(this->model)));
   QMatrix4x4 v(glm::value_ptr(glm::transpose(this->view)));
@@ -108,6 +109,13 @@ void RenderWidget::resizeGL(int width, int height)
 
 void RenderWidget::keyPressEvent(QKeyEvent *event)
 {
+  struct vertex
+  {
+      glm::vec3 pos;
+      glm::vec3 normal;
+  };
+
+  std::vector<vertex> vbo;
   glm::vec3 movementUnitDirection;
   bool hasMoved = true;
   bool keyPressed = true;
@@ -134,6 +142,28 @@ void RenderWidget::keyPressEvent(QKeyEvent *event)
       break;
     case Qt::Key_Z:
       movementUnitDirection = this->camera->getBelowUnitVector();
+      break;
+    case Qt::Key_P:
+      this->vertices.clear();
+      this->normals.clear();
+      this->indices.clear();
+      this->mesh->avgSmoothing();
+      this->mesh->getTriangles(&(this->vertices), &(this->normals), &(this->indices));
+//      this->glDeleteVertexArrays(1, &VAO);
+//      this->glDeleteBuffers(1, &VBO);
+//      this->glDeleteBuffers(1, &EBO);
+
+      vbo.reserve(this->vertices.size());
+      for (unsigned int i = 0; i < vertices.size(); i++)
+      {
+        vbo.push_back({vertices[i], normals[i]});
+      }
+
+      glBindBuffer(GL_ARRAY_BUFFER, VBO);
+      glBufferData(GL_ARRAY_BUFFER, vbo.size() * sizeof(vertex), &vbo[0], GL_STATIC_DRAW);
+
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
       break;
     case Qt::Key_1:
       this->hasWireframe = !this->hasWireframe;
@@ -250,8 +280,9 @@ void RenderWidget::createCube()
 //      23, 17, 14  //normal: (  0, +1,  0 )
 //  };
 
-  Mesh mesh;
-  mesh.loadObj("C:\\Users\\Ian Albuquerque\\Desktop\\mesh_processing\\3drenderer\\models\\venus_100759.obj");
+  this->mesh = new Mesh();
+  this->mesh->loadObj("C:\\Users\\Ian Albuquerque\\Desktop\\mesh_processing\\3drenderer\\models\\cow_2904.obj");
+//  this->mesh->avgSmoothing();
 //  mesh.loadPyramid();
 //  mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
 //  for(int i=0; i<this->vertices.size(); i++)
@@ -259,7 +290,7 @@ void RenderWidget::createCube()
 //    this->vertices[i] *= -2.0f;
 //    this->normals[i] *= -2.0f;
 //  }
-  mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
+  this->mesh->getTriangles(&(this->vertices), &(this->normals), &(this->indices));
 
 //  vertices = {
 //    {0, 0, 0}, {1, 0, 0}, {0, 1, 0},

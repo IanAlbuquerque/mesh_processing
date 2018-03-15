@@ -9,16 +9,21 @@
 Vertex::Vertex(float x, float y, float z)
 {
   this->position = glm::vec3(x, y, z);
+  this->halfedge = NULL;
 }
 
 Face::Face()
 {
-
+  this->halfedge = NULL;
 }
 
 Halfedge::Halfedge()
 {
-
+  this->vertex = NULL;
+  this->face = NULL;
+  this->next = NULL;
+  this->prev = NULL;
+  this->opposite = NULL;
 }
 
 Mesh::Mesh()
@@ -26,6 +31,36 @@ Mesh::Mesh()
 
 }
 
+void Mesh::avgSmoothing()
+{
+  std::vector<glm::vec3> newVerticesPositions;
+  for(int i=0; i<this->vertices.size(); i++)
+  {
+    std::vector<glm::vec3> adjVerticesPositions;
+    Halfedge* startingHalfedge = this->vertices[i]->halfedge;
+    adjVerticesPositions.push_back(startingHalfedge->vertex->position);
+    Halfedge* currentHalfedge = startingHalfedge->prev->opposite;
+    do
+    {
+      adjVerticesPositions.push_back(currentHalfedge->vertex->position);
+      currentHalfedge = currentHalfedge->prev->opposite;
+    }
+    while(currentHalfedge != startingHalfedge);
+
+    glm::vec3 avgPosition = glm::vec3(0.0f, 0.0f, 0.0f);
+    for(int j=0; j<adjVerticesPositions.size(); j++)
+    {
+      avgPosition += adjVerticesPositions[j];
+    }
+    avgPosition /= (float) adjVerticesPositions.size();
+
+    newVerticesPositions.push_back(avgPosition);
+  }
+  for(int i=0; i<this->vertices.size(); i++)
+  {
+    this->vertices[i]->position += 0.1f * (newVerticesPositions[i] - this->vertices[i]->position);
+  }
+}
 
 void Mesh::loadObj(std::string inputFilePath)
 {
@@ -39,25 +74,37 @@ void Mesh::loadObj(std::string inputFilePath)
   if (!err.empty())
   {
     // `err` may contain warning message.
-     qDebug() << err.c_str();
+    qDebug() << err.c_str();
   }
 
   if (!ret)
-   {
+  {
     exit(1);
   }
 
   for(size_t v=0; v < attrib.vertices.size()/3; v++)
   {
-//    qDebug() << v << attrib.vertices.size();
+    // qDebug() << v << attrib.vertices.size();
     float vx = attrib.vertices[3*v+0];
     float vy = attrib.vertices[3*v+1];
     float vz = attrib.vertices[3*v+2];
     this->vertices.push_back(new Vertex(vx, vy, vz));
   }
 
+  int totalNumVertices = this->vertices.size();
+  Halfedge** edgesSet = new Halfedge*[totalNumVertices * totalNumVertices];
+
   for (size_t s = 0; s < shapes.size(); s++) {
     // Loop over faces(polygon)
+
+    for(int vi=0; vi<totalNumVertices; vi++)
+    {
+      for(int vj=0; vj<totalNumVertices; vj++)
+      {
+        edgesSet[totalNumVertices * vi + vj] = NULL;
+      }
+    }
+
     size_t index_offset = 0;
     for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
       this->faces.push_back(new Face());
@@ -73,9 +120,23 @@ void Mesh::loadObj(std::string inputFilePath)
       for (size_t v = 1; v < fv; v++) {
         int vertex_idx = shapes[s].mesh.indices[index_offset + v].vertex_index;
         this->halfedges[halfEdgeIndex + v - 1]->vertex = this->vertices[vertex_idx];
+        int prev_vertex_idx = shapes[s].mesh.indices[index_offset + v - 1].vertex_index;
+        edgesSet[totalNumVertices * prev_vertex_idx + vertex_idx] = this->halfedges[halfEdgeIndex + v - 1];
+        if (edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx] != NULL)
+        {
+          this->halfedges[halfEdgeIndex + v - 1]->opposite = edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx];
+          edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx]->opposite = this->halfedges[halfEdgeIndex + v - 1];
+        }
       }
       int vertex_idx = shapes[s].mesh.indices[index_offset + 0].vertex_index;
       this->halfedges[halfEdgeIndex + fv - 1]->vertex = this->vertices[vertex_idx];
+      int prev_vertex_idx = shapes[s].mesh.indices[halfEdgeIndex + fv - 1].vertex_index;
+      edgesSet[totalNumVertices * prev_vertex_idx + vertex_idx] = this->halfedges[halfEdgeIndex + fv - 1];
+      if (edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx] != NULL)
+      {
+        this->halfedges[halfEdgeIndex + fv - 1]->opposite = edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx];
+        edgesSet[totalNumVertices * vertex_idx + prev_vertex_idx]->opposite = this->halfedges[halfEdgeIndex + fv - 1];
+      }
 
       for (size_t v = 1; v < fv - 1; v++) {
         this->halfedges[halfEdgeIndex + v]->prev = this->halfedges[halfEdgeIndex + v - 1];
@@ -90,6 +151,8 @@ void Mesh::loadObj(std::string inputFilePath)
       index_offset += fv;
     }
   }
+
+  delete edgesSet;
 }
 
 void Mesh::loadPyramid()

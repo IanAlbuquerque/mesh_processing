@@ -53,6 +53,7 @@ public:
   void loadPyramid();
   void getTriangles(std::vector<glm::vec3>* vertices, std::vector<glm::vec3>* normals, std::vector<unsigned int>* indices);
   void loadObj(std::string inputFilePath);
+  void avgSmoothing();
 };
 
 #endif // TRIANGLEMESH_H

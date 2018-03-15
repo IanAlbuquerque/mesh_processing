@@ -11,6 +11,7 @@
 
 #include "glm/glm.hpp"
 #include "camera.h"
+#include "mesh.h"
 
 class RenderWidget
         : public QOpenGLWidget
@@ -54,6 +55,8 @@ private:
 
     bool hasWireframe;
     bool hasOcclusion;
+
+    Mesh* mesh;
 };
 
 #endif // RENDERWIDGET_H
