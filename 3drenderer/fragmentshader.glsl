@@ -22,7 +22,7 @@ void main()
         return;
     }
 
-    vec3 lightPositionVSpace = vec3(0.0, 3.0, 0.0);
+    vec3 lightPositionVSpace = vec3(0.0, 0.0, 0.0);
     vec3 materialDiffuse = vec3(1.0, 0.0, 0.0);
     vec3 materialSpecular = vec3(1.0, 1.0, 1.0);
 

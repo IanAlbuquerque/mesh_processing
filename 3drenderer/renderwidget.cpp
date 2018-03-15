@@ -22,7 +22,7 @@ RenderWidget::RenderWidget(QWidget *parent)
   this->isMovingCamera = false;
 
   this->camera = new Camera(
-    glm::vec3(10.0f, 0.0f, 10.0f),
+    glm::vec3(30.0f, 0.0f, 30.0f),
     glm::vec3(0.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f),
     60.0f,
@@ -80,7 +80,7 @@ void RenderWidget::paintGL()
   this->view = this->camera->getViewMatrix();
   this->proj = this->camera->getProjectionMatrix();
   this->model = glm::mat4();
-  this->model = glm::scale(this->model, glm::vec3(5.0f, 5.0f, 5.0f));
+  this->model = glm::scale(this->model, glm::vec3(10.0f, 10.0f, 10.0f));
 
   QMatrix4x4 m(glm::value_ptr(glm::transpose(this->model)));
   QMatrix4x4 v(glm::value_ptr(glm::transpose(this->view)));
@@ -181,7 +181,7 @@ void RenderWidget::keyPressEvent(QKeyEvent *event)
 
   if(keyPressed || hasMoved)
   {
-    this->camera->moveDelta(movementUnitDirection * 0.3 * (event->modifiers() & Qt::ShiftModifier ? 2.0f : 1.0f));
+    this->camera->moveDelta(movementUnitDirection * 0.2 * (event->modifiers() & Qt::ShiftModifier ? 2.0f : 1.0f));
     this->update();
   }
 }
@@ -222,8 +222,8 @@ void RenderWidget::mouseMoveEvent(QMouseEvent *event)
     deltaScreenCoordinates.x /= this->width();
     deltaScreenCoordinates.y /= this->height();
 
-    this->camera->lookRotateHorizontal(deltaScreenCoordinates.x * -360.0f);
-    this->camera->lookRotateVertical(deltaScreenCoordinates.y * -360.0f);
+    this->camera->lookRotateHorizontal(deltaScreenCoordinates.x * -360.0f * 0.5f);
+    this->camera->lookRotateVertical(deltaScreenCoordinates.y * -360.0f * 0.5f);
 
     QCursor cursor = this->cursor();
     cursor.setPos(this->mapToGlobal(QPoint(this->screenCoordinatesOnMouseDown.x, this->screenCoordinatesOnMouseDown.y)));
