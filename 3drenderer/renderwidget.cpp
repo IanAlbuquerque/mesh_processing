@@ -19,15 +19,16 @@ RenderWidget::RenderWidget(QWidget *parent)
     , program(nullptr)
 {
   this->setFocusPolicy(Qt::TabFocus);
-  this->isMovingCamera = false;
+  this->isArcballMovementActive = false;
+  this->isPanMovementActive = false;
 
   this->camera = new Camera(
-    glm::vec3(30.0f, 0.0f, 30.0f),
+    glm::vec3(0.0f, 0.0f, -2.0f),
     glm::vec3(0.0f, 0.0f, 0.0f),
     glm::vec3(0.0f, 1.0f, 0.0f),
-    60.0f,
-    0.1f,
-    100.0f,
+    30.0f,
+    0.001f,
+    10.0f,
     this->width(),
     this->height()
     );
@@ -80,7 +81,7 @@ void RenderWidget::paintGL()
   this->view = this->camera->getViewMatrix();
   this->proj = this->camera->getProjectionMatrix();
   this->model = glm::mat4();
-  this->model = glm::scale(this->model, glm::vec3(10.0f, 10.0f, 10.0f));
+//  this->model = glm::scale(this->model, glm::vec3(10.0f, 10.0f, 10.0f));
 
   QMatrix4x4 m(glm::value_ptr(glm::transpose(this->model)));
   QMatrix4x4 v(glm::value_ptr(glm::transpose(this->view)));
@@ -116,42 +117,14 @@ void RenderWidget::keyPressEvent(QKeyEvent *event)
   };
 
   std::vector<vertex> vbo;
-  glm::vec3 movementUnitDirection;
-  bool hasMoved = true;
-  bool keyPressed = true;
   switch(event->key())
   {
-    case Qt::Key_W:
-    case Qt::Key_Up:
-      movementUnitDirection = this->camera->getForwardUnitVector();
-      break;
-    case Qt::Key_S:
-    case Qt::Key_Down:
-      movementUnitDirection = this->camera->getBackwardUnitVector();
-      break;
-    case Qt::Key_A:
-    case Qt::Key_Left:
-      movementUnitDirection = this->camera->getLeftUnitVector();
-      break;
-    case Qt::Key_D:
-    case Qt::Key_Right:
-      movementUnitDirection = this->camera->getRightUnitVector();
-      break;
-    case Qt::Key_Space:
-      movementUnitDirection = this->camera->getAboveUnitVector();
-      break;
-    case Qt::Key_Z:
-      movementUnitDirection = this->camera->getBelowUnitVector();
-      break;
     case Qt::Key_P:
       this->vertices.clear();
       this->normals.clear();
       this->indices.clear();
       this->mesh->avgSmoothing();
       this->mesh->getTriangles(&(this->vertices), &(this->normals), &(this->indices));
-//      this->glDeleteVertexArrays(1, &VAO);
-//      this->glDeleteBuffers(1, &VBO);
-//      this->glDeleteBuffers(1, &EBO);
 
       vbo.reserve(this->vertices.size());
       for (unsigned int i = 0; i < vertices.size(); i++)
@@ -164,25 +137,18 @@ void RenderWidget::keyPressEvent(QKeyEvent *event)
 
       glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
       glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size()*sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+      this->update();
       break;
     case Qt::Key_1:
       this->hasWireframe = !this->hasWireframe;
-      hasMoved = false;
+      this->update();
       break;
     case Qt::Key_2:
       this->hasOcclusion = !this->hasOcclusion;
-      hasMoved = false;
+      this->update();
       break;
     default:
-      hasMoved = false;
-      keyPressed = false;
       break;
-  }
-
-  if(keyPressed || hasMoved)
-  {
-    this->camera->moveDelta(movementUnitDirection * 0.2 * (event->modifiers() & Qt::ShiftModifier ? 2.0f : 1.0f));
-    this->update();
   }
 }
 
@@ -192,43 +158,47 @@ void RenderWidget::keyReleaseEvent(QKeyEvent *event)
 
 void RenderWidget::mousePressEvent(QMouseEvent *event)
 {
-  this->isMovingCamera = true;
-
-  this->screenCoordinatesOnMouseDown = glm::vec2(event->x(), event->y());
-
-  QCursor cursor = this->cursor();
-  cursor.setShape(Qt::BlankCursor);
-  this->setCursor(cursor);
+  int buttons = event->buttons();
+  if(buttons & Qt::RightButton)
+  {
+    this->isArcballMovementActive = true;
+    this->lastArcballScreenCoordinates = glm::vec2(event->x(), event->y());
+  }
+  if(buttons & Qt::MidButton)
+  {
+    this->isPanMovementActive = true;
+    this->lastPanScreenCoordinates = glm::vec2(event->x(), event->y());
+  }
 }
 
 
 void RenderWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-  this->isMovingCamera = false;
-
-  QCursor cursor = this->cursor();
-  cursor.setShape(Qt::ArrowCursor);
-  this->setCursor(cursor);
+  int buttons = ~event->buttons();
+  if(buttons & Qt::RightButton)
+  {
+    this->isArcballMovementActive = false;
+  }
+  if(buttons & Qt::MidButton)
+  {
+    this->isPanMovementActive = false;
+  }
 }
-
 
 void RenderWidget::mouseMoveEvent(QMouseEvent *event)
 {
-  if(this->isMovingCamera)
+  if(this->isArcballMovementActive)
   {
-    glm::vec2 currentScreenCoordinates = glm::vec2(event->x(), event->y());
-
-    glm::vec2 deltaScreenCoordinates = currentScreenCoordinates - this->screenCoordinatesOnMouseDown;
-    deltaScreenCoordinates.x /= this->width();
-    deltaScreenCoordinates.y /= this->height();
-
-    this->camera->lookRotateHorizontal(deltaScreenCoordinates.x * -360.0f * 0.5f);
-    this->camera->lookRotateVertical(deltaScreenCoordinates.y * -360.0f * 0.5f);
-
-    QCursor cursor = this->cursor();
-    cursor.setPos(this->mapToGlobal(QPoint(this->screenCoordinatesOnMouseDown.x, this->screenCoordinatesOnMouseDown.y)));
-    this->setCursor(cursor);
-
+    glm::vec2 currentArcballScreenCoordinates = glm::vec2(event->x(), event->y());
+    this->camera->arcballMoveScreenCoordinates(this->lastArcballScreenCoordinates, currentArcballScreenCoordinates);
+    this->lastArcballScreenCoordinates = currentArcballScreenCoordinates;
+    this->update();
+  }
+  if(this->isPanMovementActive)
+  {
+    glm::vec2 currentPanScreenCoordinates = glm::vec2(event->x(), event->y());
+    this->camera->cameraPan(currentPanScreenCoordinates - this->lastPanScreenCoordinates);
+    this->lastPanScreenCoordinates = currentPanScreenCoordinates;
     this->update();
   }
 }
@@ -236,71 +206,17 @@ void RenderWidget::mouseMoveEvent(QMouseEvent *event)
 
 void RenderWidget::wheelEvent(QWheelEvent *event)
 {
-  this->camera->increaseZoomBy(0.005 * event->delta());
+//  this->camera->increaseZoomBy(0.005 * event->delta());
+  this->camera->zoomBy(event->delta());
   this->update();
 }
 
 
 void RenderWidget::createCube()
 {
-//  vertices = {
-//      { -1, -1, -1 }, { -1, -1, -1 }, { -1, -1, -1 },
-//      { +1, -1, -1 }, { +1, -1, -1 }, { +1, -1, -1 },
-//      { +1, -1, +1 }, { +1, -1, +1 }, { +1, -1, +1 },
-//      { -1, -1, +1 }, { -1, -1, +1 }, { -1, -1, +1 },
-//      { -1, +1, -1 }, { -1, +1, -1 }, { -1, +1, -1 },
-//      { +1, +1, -1 }, { +1, +1, -1 }, { +1, +1, -1 },
-//      { +1, +1, +1 }, { +1, +1, +1 }, { +1, +1, +1 },
-//      { -1, +1, +1 }, { -1, +1, +1 }, { -1, +1, +1 }
-//  };
-
-//  normals = {
-//      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, -1 },
-//      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, -1 },
-//      {  0, -1,  0 }, { +1,  0,  0 }, {  0,  0, +1 },
-//      {  0, -1,  0 }, { -1,  0,  0 }, {  0,  0, +1 },
-//      { -1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
-//      { +1,  0,  0 }, {  0,  0, -1 }, {  0, +1,  0 },
-//      { +1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 },
-//      { -1,  0,  0 }, {  0,  0, +1 }, {  0, +1,  0 }
-//  };
-
-//  indices = {
-//      0,   3,  6, //normal: (  0, -1,  0 )
-//      0,   6,  9, //normal: (  0, -1,  0 )
-//      12,  1, 10, //normal: ( -1,  0,  0 )
-//      12, 10, 21, //normal: ( -1,  0,  0 )
-//      18,  7,  4, //normal: ( +1,  0,  0 )
-//      18,  4, 15, //normal: ( +1,  0,  0 )
-//      22, 11,  8, //normal: (  0,  0, +1 )
-//      22,  8, 19, //normal: (  0,  0, +1 )
-//      16,  5,  2, //normal: (  0,  0, -1 )
-//      16,  2, 13, //normal: (  0,  0, -1 )
-//      23, 20, 17, //normal: (  0, +1,  0 )
-//      23, 17, 14  //normal: (  0, +1,  0 )
-//  };
-
   this->mesh = new Mesh();
   this->mesh->loadObj("C:\\Users\\Ian Albuquerque\\Desktop\\mesh_processing\\3drenderer\\models\\cow_2904.obj");
-//  this->mesh->avgSmoothing();
-//  mesh.loadPyramid();
-//  mesh.getTriangles(&(this->vertices), &(this->normals), &(this->indices));
-//  for(int i=0; i<this->vertices.size(); i++)
-//  {
-//    this->vertices[i] *= -2.0f;
-//    this->normals[i] *= -2.0f;
-//  }
   this->mesh->getTriangles(&(this->vertices), &(this->normals), &(this->indices));
-
-//  vertices = {
-//    {0, 0, 0}, {1, 0, 0}, {0, 1, 0},
-//    {0, 0, 1}, {1, 0, 1}, {0, 1, 1}
-//   };
-
-//  normals = {
-//    {0, 0, -1}, {0, 0, -1}, {0, 0, -1},
-//    {0, 0, 1}, {0, 0, 1}, {0, 0, 1}
-//  };
 }
 
 void RenderWidget::createVBO()

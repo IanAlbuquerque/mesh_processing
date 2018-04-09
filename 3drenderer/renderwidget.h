@@ -50,8 +50,10 @@ private:
     glm::mat4x4 view;
     glm::mat4x4 proj;
 
-    glm::vec2 screenCoordinatesOnMouseDown;
-    bool isMovingCamera;
+    glm::vec2 lastArcballScreenCoordinates;
+    bool isArcballMovementActive;
+    glm::vec2 lastPanScreenCoordinates;
+    bool isPanMovementActive;
 
     bool hasWireframe;
     bool hasOcclusion;

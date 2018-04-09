@@ -1,6 +1,8 @@
 #include "camera.h"
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <QDebug>
 
 Camera::Camera( glm::vec3 eye,
                 glm::vec3 at,
@@ -20,31 +22,7 @@ Camera::Camera( glm::vec3 eye,
   this->width = width;
   this->height = height;
 
-  this->zoom = 1.0f;
-  this->ensureZoomInRange();
-}
-
-glm::mat4x4 Camera::getViewMatrix()
-{
-  return glm::lookAt(this->eye, this->at, this->up);
-}
-
-glm::mat4x4 Camera::getProjectionMatrix()
-{
-  return glm::perspective( this->getFovYWithZoom(),
-                           this->width / this->height,
-                           this->zNear,
-                           this->zFar);
-}
-
-float Camera::getFovYWithZoom()
-{
-  return glm::atan(glm::tan(glm::radians(this->fovy)) / this->zoom);
-}
-
-float Camera::getFovXWithZoom()
-{
-  return 2.0f * glm::atan(this->width / this->height * glm::tan( this->getFovYWithZoom() / 2.0f ));
+  this->q = glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
 }
 
 void Camera::updateWH(float width, float height)
@@ -53,135 +31,96 @@ void Camera::updateWH(float width, float height)
   this->height = height;
 }
 
-glm::vec3 Camera::getPosition()
+glm::mat4x4 Camera::getViewMatrix()
 {
-  return this->eye;
+//   return glm::lookAt(this->eye, this->at, this->up) * glm::toMat4(this->q);
+   return glm::lookAt(this->eye, this->at, this->up);
 }
 
-glm::vec3 Camera::getFrontUnitVector()
+glm::mat4x4 Camera::getProjectionMatrix()
 {
-  return glm::normalize(this->at - this->eye);
+  return glm::perspective( this->fovy,
+                           this->width / this->height,
+                           this->zNear,
+                           this->zFar);
 }
 
-glm::vec3 Camera::getBackUnitVector()
+void Camera::zoomBy(float delta)
 {
-  return -1.0f * this->getFrontUnitVector();
+  this->eye += 0.1f * (this->at - this->eye) * delta/abs(delta);
 }
 
-glm::vec3 Camera::getForwardUnitVector()
+void Camera::cameraPan(glm::vec2 delta)
 {
-  return glm::cross(glm::normalize(this->up), this->getRightUnitVector());
+  float screenToWorldRatio = glm::abs(glm::tan(this->fovy / 2.0f) * this->zNear * 2.0f / (float) this->height);
+  delta *= screenToWorldRatio * 500.0f;
+  glm::vec3 rightUnit = glm::normalize(glm::cross(this->at - this->eye, this->up));
+  glm::vec3 downUnit = glm::normalize(glm::cross(this->at - this->eye, rightUnit));
+  this->eye += rightUnit * delta.x;
+  this->eye += downUnit * delta.y;
+  this->at += rightUnit * delta.x;
+  this->at += downUnit * delta.y;
 }
 
-glm::vec3 Camera::getBackwardUnitVector()
+glm::vec3 Camera::arcballScreenCoordsToUnitSphere(glm::vec2 screenCoordinates)
 {
-  return -1.0f * this->getForwardUnitVector();
-}
+  float screenRatio = glm::min(this->width, this->height) / 2.0f;
 
-glm::vec3 Camera::getRightUnitVector()
-{
-  return glm::cross(this->getFrontUnitVector(), glm::normalize(this->up));
-}
+  screenCoordinates.x = screenCoordinates.x - this->width/ 2.0f;
+  screenCoordinates.y = screenCoordinates.y - this->height/ 2.0f;
+//  screenCoordinates.y *= -1.0f;
+  screenCoordinates /= screenRatio;
 
-glm::vec3 Camera::getLeftUnitVector()
-{
-  return -1.0f * this->getRightUnitVector();
-}
+  float r = screenCoordinates.x * screenCoordinates.x + screenCoordinates.y * screenCoordinates.y;
 
-glm::vec3 Camera::getUpUnitVector()
-{
-  return glm::cross(this->getRightUnitVector(), this->getFrontUnitVector());
-}
+  glm::vec3 arcballPoint;
 
-glm::vec3 Camera::getDownUnitVector()
-{
-  return -1.0f * this->getUpUnitVector();
-}
-
-glm::vec3 Camera::getAboveUnitVector()
-{
-  return glm::normalize(this->up);
-}
-
-glm::vec3 Camera::getBelowUnitVector()
-{
-  return -1.0f * this->getAboveUnitVector();
-}
-
-void Camera::lookAt(glm::vec3 point)
-{
-  this->at = point;
-}
-
-void Camera::lookDelta(glm::vec3 delta)
-{
-  this->at += delta;
-}
-
-void Camera::lookRotateHorizontal(float angle)
-{
-  glm::vec3 newAt = this->at;
-  newAt -= this->eye;
-  this->at = glm::rotate(newAt, glm::radians(angle), this->up) + this->eye;
-}
-
-void Camera::lookRotateVertical(float angle)
-{
-  glm::vec3 newAt = this->at;
-  newAt -= this->eye;
-  glm::vec3 newAtNormalized = glm::normalize(newAt);
-  glm::vec3 upNormalized = glm::normalize(this->up);
-  float currentAngle = glm::degrees(glm::acos(glm::dot(newAtNormalized, upNormalized)));
-  if (currentAngle - angle < 1.0f)
+  if (r > 1.0f)
   {
-    angle = currentAngle - 1.0f;
+    float s = 1.0f / glm::sqrt(r);
+    arcballPoint.x = s * screenCoordinates.x;
+    arcballPoint.y = s * screenCoordinates.y;
+    arcballPoint.z = 0.0;
   }
-  if (currentAngle - angle > 180.0f - 1.0f)
+  else
   {
-    angle = currentAngle - (180.0f - 1.0f);
+    arcballPoint.x = screenCoordinates.x;
+    arcballPoint.y = screenCoordinates.y;
+    arcballPoint.z = glm::sqrt(1.0f - r);
   }
-  this->at = glm::rotate(newAt, glm::radians(angle), this->getRightUnitVector()) + this->eye;
+
+  return arcballPoint;
 }
 
-void Camera::moveTo(glm::vec3 point)
+void Camera::arcballMoveScreenCoordinates(glm::vec2 m1, glm::vec2 m2)
 {
-  this->at += point - this->eye;
-  this->eye = point;
-}
+  glm::vec3 p1 = this->arcballScreenCoordsToUnitSphere(m1);
+  glm::vec3 p2 = this->arcballScreenCoordsToUnitSphere(m2);
 
-void Camera::moveDelta(glm::vec3 delta)
-{
-  this->at += delta;
-  this->eye += delta;
-}
+  glm::vec3 cross = -1.0f * glm::cross(p1, p2);
+  glm::quat q = glm::quat(glm::dot(p1, p2), cross.x, cross.y, cross.z);
+  glm::mat4 R = glm::toMat4(q);
+//  glm::mat3 R = glm::toMat3(q);
 
-void Camera::ensureZoomInRange()
-{
-  this->zoom = glm::max(0.0001f, this->zoom);
-}
+//  this->q = q * this->q;
 
-void Camera::setZoom(float zoom)
-{
-  this->zoom = zoom;
-  this->ensureZoomInRange();
-}
+  glm::mat4 F = glm::translate(glm::lookAt(this->eye, this->at, this->up), this->eye - this->at);
+  glm::mat4 Finv = glm::inverse(F);
 
-float Camera::getZoom()
-{
-  return this->zoom;
-}
+  glm::vec4 eye = glm::vec4(this->eye, 1.0f);
+  glm::vec4 upPoint = glm::vec4(this->eye + this->up, 1.0f);
 
-float Camera::increaseZoomBy(float value)
-{
-  this->zoom += value;
-  this->ensureZoomInRange();
-}
+  this->eye = glm::vec3(Finv*R*F*eye);
+  this->up = glm::vec3(Finv*R*F*upPoint) - this->eye;
 
-glm::vec3 Camera::screenToWorldCoordinates(glm::vec2 screenCoordinates)
-{
-  glm::vec3 pos = this->getPosition();
-  pos += this->getFrontUnitVector() * this->zNear;
-  pos += this->getRightUnitVector() * ((screenCoordinates.x / this->width) - 0.5) * glm::tan(this->getFovXWithZoom() / 2.0f) * this->zNear * 2.0f;
-  pos += this->getDownUnitVector() * ((screenCoordinates.y / this->height) - 0.5) * glm::tan(this->getFovYWithZoom() / 2.0f) * this->zNear * 2.0f;
-  return pos;
+//  this->up = this->eye + this->up;
+//  this->up -= this->at;
+//  this->up = R*this->up;
+//  this->up += this->at;
+//  this->up = this->up - this->eye;
+
+//  this->eye -= this->at;
+//  this->eye = R*this->eye;
+//  this->eye += this->at;
+
 }
